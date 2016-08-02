@@ -10,6 +10,8 @@
         <h3>{{ post.subject | safe }}</h3>
         <p>{{ post.content | safe }}</p>
         <p>
+        <p>{{ post.author.name }}</p>
+        <p>
           <a href="/blog/update/{{ post.key.urlsafe() }}" class="btn btn-primary" role="button">Edit</a> 
 
           <a href="/blog/delete/{{ post.key.urlsafe() }}" class="btn btn-default" role="button">Delete</a></p>
