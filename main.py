@@ -201,8 +201,6 @@ class UpdatePost(BaseHandler):
         # retrieve the post from the key
         post = post_key.get()
 
-        self.author_required(post)
-
         # render the page with the post
         self.render("create_post.html", post=post)
 
@@ -214,8 +212,6 @@ class UpdatePost(BaseHandler):
 
         # retrieve the post from the key
         post = post_key.get()
-
-        self.author_required(post)
 
         # retrieve the posted subject and content
         subject = self.request.get('subject')
@@ -262,8 +258,6 @@ class DeletePost(BaseHandler):
         # retrieve the key from th url string
         post_key = ndb.Key(urlsafe=post_key)
         post = post_key.get()
-
-        self.author_required(post)
 
         # delete the key (and the post associated with it)
         post_key.delete()
