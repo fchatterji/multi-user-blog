@@ -33,6 +33,5 @@ class Comment(ndb.Model):
     post = ndb.StructuredProperty(Article)
 
 class Like(ndb.Model):
-    number = ndb.IntegerProperty(required=True)
     author = ndb.StructuredProperty(User, required=True)
     post = ndb.StructuredProperty(Article, required=True)

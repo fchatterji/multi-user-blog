@@ -28,4 +28,25 @@
 {{ user.name }}
 
 
+        <h2>{{story.title}}</h2>
+        <div>
+            <span class="voteCount">{{story.vote_count}}</span>  | <a href="javascript:VoteUp('{{story.key.id()}}');" >Vote Up Story</a>
+        </div>
+        <script>
+            function VoteUp(storyKey){
+                $.ajax({
+                  type: "POST",
+                  url: "/vote/",
+                  dataType: 'json',
+                  data: JSON.stringify({ "storyKey": storyKey})
+                })
+                .done(function( data ) { // check why I use done
+                    alert( "Vote Cast!!! Count is : " + data['story']['vote_count'] );
+                    $('.voteCount').text(data['story']['vote_count']);
+                });
+            };
+        </script>
+
+        
+
 {% endblock %}

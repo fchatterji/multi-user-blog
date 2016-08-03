@@ -35,6 +35,9 @@ import webapp2
 
 from models import User, Article, Comment, Like
 
+#
+# Constantz
+#
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(
         os.path.join(os.path.dirname(__file__), 'templates')),
@@ -42,8 +45,9 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     autoescape=True)
 
 
-
-
+#
+# Security functions
+#
 def hash_str(s):
     return hmac.new("secret", s).hexdigest()
 
@@ -78,7 +82,9 @@ def check_pw_hash(name, pw, h):
         return False
 
 
-
+#
+# Login
+#
 def login_required(handler_method):
     """..."""
     def check_login(self, *args):
@@ -90,25 +96,32 @@ def login_required(handler_method):
     return check_login
 
 
-USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,50}$")
+#
+# Form validation
+#
 def valid_username(username):
-    return username and USER_RE.match(username)
+    user_re = re.compile(r"^[a-zA-Z0-9_-]{3,50}$")
+    return username and user_re.match(username)
 
-PASS_RE = re.compile(r"^.{3,50}$")
+
 def valid_password(password):
-    return password and PASS_RE.match(password)
+    password_re = re.compile(r"^.{3,50}$")
+    return password and password_re.match(password)
 
-EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+
 def valid_email(email):
-    return not email or EMAIL_RE.match(email)
+    email_re = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+    return not email or email_re.match(email)
 
-SUBJECT_RE = re.compile(r"^.{3,200}$")
+
 def valid_subject(subject):
-    return subject 
+    subject_re = re.compile(r"^.{3,200}$")
+    return subject and subject_re.match(subject)
 
-CONTENT_RE = re.compile(r"^.{3,}$")
+
 def valid_content(content):
-    return content
+    content_re = re.compile(r"^.{3,}$")
+    return content and content_re.match(content)
 
 
 def validate_signup_form(username, password, verify, email):
@@ -141,9 +154,6 @@ def validate_signup_form(username, password, verify, email):
         return (False, errors)
     else:
         return (True, None)
-
-
-
 
 
 def validate_create_post_form(subject, content):
@@ -183,7 +193,6 @@ def validate_update_post_form(subject, content, original_author, user):
         return (False, errors)
     else:
         return (True, None)
-
 
 
 def validate_login_form(username, password):
@@ -449,9 +458,18 @@ class Logout(BaseHandler):
         self.redirect('/blog/')
 
 
-#
-# url scheme
-#
+class VoteHandler(webapp2.RequestHandler):
+    def post(self):
+        logging.info(self.request.body)
+        data = json.loads(self.request.body)
+        story = ndb.Key(Story, data['storyKey']).get()
+        story.vote_count += 1
+        story.put()
+        self.response.out.write(json.dumps(({'story': story.to_dict()})))
+
+
+        
+
 app = webapp2.WSGIApplication([
     ('/blog/?', Home),
     ('/blog/register', Register),
