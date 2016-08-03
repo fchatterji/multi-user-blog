@@ -26,18 +26,22 @@ import hmac
 import string
 import hashlib
 import random
+import re
 
 from google.appengine.ext import ndb
 
 import jinja2
 import webapp2
 
+from models import User, Article, Comment, Like
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(
         os.path.join(os.path.dirname(__file__), 'templates')),
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
+
+
 
 
 def hash_str(s):
@@ -86,30 +90,141 @@ def login_required(handler_method):
     return check_login
 
 
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,50}$")
+def valid_username(username):
+    return username and USER_RE.match(username)
 
-#
-# Data model
-#
-class User(ndb.Model):
+PASS_RE = re.compile(r"^.{3,50}$")
+def valid_password(password):
+    return password and PASS_RE.match(password)
 
-    name = ndb.StringProperty(required=True)
-    hashed_password = ndb.StringProperty(required=True)
-    email = ndb.StringProperty()
+EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+def valid_email(email):
+    return not email or EMAIL_RE.match(email)
 
-    @classmethod
-    def get_user_by_name(cls, name):
-        return cls.query(User.name == name).get()
+SUBJECT_RE = re.compile(r"^.{3,200}$")
+def valid_subject(subject):
+    return subject 
+
+CONTENT_RE = re.compile(r"^.{3,}$")
+def valid_content(content):
+    return content
 
 
-class Article(ndb.Model):
-    """Article model, represents a blog post."""
+def validate_signup_form(username, password, verify, email):
+    have_error = False
+    errors = {}
 
-    subject = ndb.StringProperty(required=True)
-    content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
-    author = ndb.StructuredProperty(User)
+    user = User.get_user_by_name(username)
 
+    if not valid_username(username):
+        errors['error_username'] = "That's not a valid username."
+        have_error = True
+
+    elif user:
+        errors['error_username'] = "This username is already taken."
+        have_error = True
+
+    if not valid_password(password):
+        errors['error_password'] = "That wasn't a valid password."
+        have_error = True
+
+    elif password != verify:
+        errors['error_verify'] = "Your passwords didn't match."
+        have_error = True
+
+    if not valid_email(email):
+        errors['error_email'] = "That's not a valid email."
+        have_error = True
+
+    if have_error:
+        return (False, errors)
+    else:
+        return (True, None)
+
+
+
+
+
+def validate_create_post_form(subject, content):
+    have_error = False
+    errors = {}
+
+    if not valid_subject(subject):
+        errors['error_subject'] = "The subject must be between 3 and 200 characters long."
+        have_error = True
+
+    if not valid_content(content):
+        errors['error_content'] = "The content must be at least 3 characters long."
+        have_error = True
+
+    if have_error:
+        return (False, errors)
+    else:
+        return (True, None)
+
+
+def validate_update_post_form(subject, content, original_author, user):
+    have_error = False
+    errors = {}
+
+    if not valid_subject(subject):
+        errors['error_subject'] = "The subject must be between 3 and 200 characters long."
+        have_error = True
+
+    if not valid_content(content):
+        errors['error_content'] = "The content must be at least 3 characters long."
+        have_error = True
+
+    if user is not original_author:
+        errors["error_author"] = "You must be the original author of a post to edit it."
+
+    if have_error:
+        return (False, errors)
+    else:
+        return (True, None)
+
+
+
+def validate_login_form(username, password):
+    have_error = False
+    errors = {}
+
+    user = User.get_user_by_name(username)
+
+    if not valid_username(username):
+        errors['error_username'] = "That's not a valid username."
+        have_error = True
+
+    elif not user:
+        errors['error_username'] = "This username doesn't exist."
+        have_error = True
+
+    if not valid_password(password):
+        errors['error_password'] = "That wasn't a valid password."
+        have_error = True
+
+    elif user and check_pw_hash(username, password, user.hashed_password):
+        errors['error_password'] = "The password is incorrect."
+        have_error = True
+
+    if have_error:
+        return (False, errors)
+    else:
+        return (True, None)
+
+
+def validate_delete(original_author, user):
+    have_error = False
+    errors = {}
+
+    if user is not original_author:
+        errors["error_author"] = "You must be the original author of a post to delete it."
+
+    if have_error:
+        return (False, errors)
+    else:
+        return (True, None)
 
 
 #
@@ -148,6 +263,7 @@ class BaseHandler(webapp2.RequestHandler):
         return self.user == post.author
 
 
+
 class Home(BaseHandler):
     """Handle home page requests."""
 
@@ -163,30 +279,29 @@ class CreatePost(BaseHandler):
 
     @login_required
     def get(self):
-        self.render("create_post.html", post=None)
+        self.render("create_post.html", errors=None)
 
     @login_required
     def post(self):
 
-        # get the subject and content from the posted form
-        post = Article(
-            subject=self.request.get('subject'),
-            content=self.request.get('content'),
-            author=self.user)
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+        author = self.user
 
-        if post.subject and post.content:
+        is_valid, errors = validate_create_post_form(subject, content)
 
+        if is_valid:
+
+            post = Article(subject=subject, content=content, author=author)
             # save the new post in the datastore and return a key
             post_key = post.put()
 
-            post_key = post_key.urlsafe()
             # redirect to the post page
+            post_key = post_key.urlsafe()
             self.redirect('/blog/post/%s' % post_key)
 
         else:
-            # reload the page, keeping existing input, add an error message
-            error = "we need both a subject and some content"
-            self.render('create_post.html', post=post, error=error)
+            self.render('create_post.html', subject=subject, content=content, errors=errors)
 
 
 class UpdatePost(BaseHandler):
@@ -195,44 +310,41 @@ class UpdatePost(BaseHandler):
     @login_required
     def get(self, post_key):
 
-        # retrieve the key from the url string
-        post_key = ndb.Key(urlsafe=post_key)
-
         # retrieve the post from the key
+        post_key = ndb.Key(urlsafe=post_key)
         post = post_key.get()
 
-        # render the page with the post
-        self.render("create_post.html", post=post)
+        subject = post.subject
+        content = post.content
+        author = post.author.name
+
+        self.render("update_post.html", subject=subject, content=content, author=author, errors=None)
+
 
     @login_required
-    def post(self, post_key):
-
-        # retrieve the key from the url string
-        post_key = ndb.Key(urlsafe=post_key)
+    def post(self, post_key_url):
 
         # retrieve the post from the key
+        post_key = ndb.Key(urlsafe=post_key_url)
         post = post_key.get()
 
-        # retrieve the posted subject and content
         subject = self.request.get('subject')
         content = self.request.get('content')
-        author = self.user
 
-        post.subject = subject
-        post.content = content
-        post.author = author
+        author = post.author.name
+        user = self.user
 
-        if subject and content:
+        is_valid, errors = validate_update_post_form(subject, content, author, user)
 
-            # update the post
+        if is_valid:
+
+            post.subject = subject
+            post.content = content
             post.put()
-            self.render("detail_post.html", post=post)
+            self.redirect('/blog/post/%s' % post_key_url)
 
         else:
-            # reload the page, keeping existing input
-            # and adding an error message
-            error = "we need both a subject and some content"
-            self.render('create_post.html', error=error, post=post)
+            self.render('update_post.html', subject=subject, content=content, author=author, errors=errors)
 
 
 class DetailPost(BaseHandler):
@@ -240,13 +352,15 @@ class DetailPost(BaseHandler):
 
     def get(self, post_key):
 
-        # retrieve the key from the url string
-        post_key = ndb.Key(urlsafe=post_key)
-
         # retrieve the post from the key
+        post_key = ndb.Key(urlsafe=post_key)
         post = post_key.get()
 
-        self.render("detail_post.html", post=post)
+        subject = post.subject
+        content = post.content
+        author = post.author.name
+
+        self.render("detail_post.html", subject=subject, content=content, post=post, author=author, errors=None)
 
 
 class DeletePost(BaseHandler):
@@ -259,43 +373,43 @@ class DeletePost(BaseHandler):
         post_key = ndb.Key(urlsafe=post_key)
         post = post_key.get()
 
-        # delete the key (and the post associated with it)
-        post_key.delete()
+        subject = post.subject
+        content = post.content
+        author = post.author.name
+        user = self.user
 
-        # go to confirmation page (add a small delay of 0.5 seconds 
-        # before redirecting so datastore has time to update
-        time.sleep(0.5)
-        self.redirect('/blog/')
+        is_valid, errors = validate_delete(author, user)
+
+        if is_valid:
+            post_key.delete()
+            time.sleep(0.5)
+            self.redirect('/blog/')
+
+        else:
+            self.render("detail_post.html", subject=subject, content=content, errors=errors)
 
 
 class Register(BaseHandler):
 
     def get(self):
-        self.render("register.html", user=None)
+        self.render("register.html", errors=None)
 
     def post(self):
         
-        name = self.request.get('name')
+        username = self.request.get('name')
         password = self.request.get('password')
+        verify = self.request.get('verify')
         email = self.request.get('email')
 
-        user = User.get_user_by_name(name)
-        logging.info(user)
+        is_valid, errors = validate_signup_form(username, password, verify, email)
 
-        if user:
-            
-            error = "Name already used"
-            self.render('register.html', user=None, error=error)
-            return
+        if is_valid:
+            hashed_password = make_pw_hash(username, password)
 
-        hashed_password = make_pw_hash(name, password)
-
-        user = User(
-            name=name,
-            hashed_password=hashed_password,
-            email=email)
-
-        if (user.name and user.hashed_password):
+            user = User(
+                name=username,
+                hashed_password=hashed_password,
+                email=email)
 
             user.put()
             self.set_secure_cookie("user_name", str(user.name))
@@ -303,36 +417,29 @@ class Register(BaseHandler):
             self.redirect('/blog/')
 
         else:
-            error = "You need to fill out your name and password"
-            self.render('register.html', user=user, error=error)
+            self.render('register.html', name=username, email=email, errors=errors)
 
 
 class Login(BaseHandler):
 
     def get(self):
-        self.render("login.html", user=None)
+        self.render("login.html", errors=None)
 
     def post(self):
         
-        name = self.request.get('name')
+        username = self.request.get('name')
         password = self.request.get('password')
 
-        if name and password:
+        is_valid, errors = validate_login_form(username, password)
 
-            user = User.get_user_by_name(name)
-            logging.info(user)
-
-            if user and check_pw_hash(name, password, user.hashed_password):
-                self.set_secure_cookie("user_name", str(user.name))
-                self.redirect('/blog/')
-
-            else:
-                error = "Invalid login"
-                self.render('login.html', name=name, error=error) 
+        if is_valid:
+            user = User.get_user_by_name(username)
+            self.set_secure_cookie("user_name", str(user.name))
+            time.sleep(0.5)
+            self.redirect('/blog/')
 
         else:
-            error = "You need to fill out your name and password"
-            self.render('login.html', name=name, error=error)
+            self.render('login.html', name=username, errors=errors)
 
 
 class Logout(BaseHandler):
@@ -340,6 +447,8 @@ class Logout(BaseHandler):
     def get(self):
         self.clear_cookie()
         self.redirect('/blog/')
+
+
 #
 # url scheme
 #

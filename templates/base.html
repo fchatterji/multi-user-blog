@@ -21,7 +21,18 @@
 <ul class="nav nav-pills">
   <li role="presentation" class="active"><a href="/blog/">Home</a></li>
   <li role="presentation"><a href="/blog/create">New Post</a></li>
+
+  {% if user %}
+  <li role="presentation">
+    <a href="/blog/logout">Logout</a>
+  </li>
+
+      <a class="navbar-brand" href="#">{{ user.name }}</a>
+      
+  {% else %}
   <li role="presentation"><a href="/blog/login">Sign in / Sign up</a></li>
+  {% endif %}
+
 </ul>
 
 

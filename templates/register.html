@@ -8,24 +8,32 @@
 
   <div class="form-group ">
     <label for="name">Name:</label>
-    <input type="text" name="name" value="{{ user.name }}" class="form-control" placeholder="Name">
+    <input type="text" name="name" value="{{ name }}" class="form-control" placeholder="Name">
+    <p>{{ errors["error_username"] }}</p>
   </div>
 
   <div class="form-group">
     <label for="password">Password:</label>
-    <input type="text" name="password" value="{{ user.password }}" class="form-control" placeholder="Password">
+    <input type="text" name="password"  class="form-control" placeholder="Password">
+    <p>{{ errors["error_password"] }}</p>
   </div>
 
   <div class="form-group">
-    <label for="email">Email:</label>
-    <input type="text" name="email" value="{{ user.email }}" class="form-control" placeholder="Email">
+    <label for="verify">Verify password:</label>
+    <input type="text" name="verify" class="form-control" placeholder="Confirm your password">
+    <p>{{ errors["error_verify"] }}</p>
+  </div>
+
+  <div class="form-group">
+    <label for="email">Email (optionnal):</label>
+    <input type="text" name="email" value="{{ email }}" class="form-control" placeholder="Email">
+    <p>{{ errors["error_email"] }}</p>
   </div>
 
   <button type="submit" class="btn btn-default">Submit</button>
 
 </form>
 
-{{ error }}
 
 <p>Already have an account?<a href="/blog/login">Log in</a>
 

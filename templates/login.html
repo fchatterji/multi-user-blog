@@ -6,20 +6,20 @@
 <form role="form" method="post">
 
   <div class="form-group ">
-    <label for="name">Name or email:</label>
+    <label for="name">Name:</label>
     <input type="text" name="name" value="{{ name }}" class="form-control" placeholder="Name">
+    <p>{{ errors["error_username"] }}</p>
   </div>
 
   <div class="form-group">
     <label for="password">Password:</label>
     <input type="text" name="password" class="form-control" placeholder="Password">
+    <p>{{ errors["error_password"] }}</p>
   </div>
 
   <button type="submit" class="btn btn-default">Submit</button>
 
 </form>
-
-{{ error }}
 
 <p><a href="/blog/register">Create a new account</a></p>
 

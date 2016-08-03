@@ -12,7 +12,7 @@
       <div class="caption">
         <h3>{{ post.subject | safe }}</h3>
         <p>{{ post.content | safe }}</p>
-        <p>{{ post.author.name }}</p>
+        <p>author: {{ post.author.name }}</p>
         <p>
         <p>
           <a href="/blog/update/{{ post.key.urlsafe() }}" class="btn btn-primary" role="button">Edit</a> 
