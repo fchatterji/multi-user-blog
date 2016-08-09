@@ -10,9 +10,13 @@ class User(ndb.Model):
     hashed_password = ndb.StringProperty(required=True)
     email = ndb.StringProperty()
 
-    @classmethod
-    def get_user_by_name(cls, name):
-        return cls.query(User.name == name).get()
+
+class Comment(ndb.Model):
+    content = ndb.TextProperty(required=True)
+    author = ndb.StructuredProperty(User)
+
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    last_modified = ndb.DateTimeProperty(auto_now=True)
 
 
 class Article(ndb.Model):
@@ -20,18 +24,18 @@ class Article(ndb.Model):
 
     subject = ndb.StringProperty(required=True)
     content = ndb.TextProperty(required=True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    last_modified = ndb.DateTimeProperty(auto_now=True)
     author = ndb.StructuredProperty(User)
 
+    likes = ndb.IntegerProperty(required=True, default=0)
+    liked_by = ndb.KeyProperty(User, repeated=True)
 
-class Comment(ndb.Model):
-    content = ndb.TextProperty(required=True)
+    comments = ndb.StructuredProperty(Comment, repeated=True)
+
     created = ndb.DateTimeProperty(auto_now_add=True)
     last_modified = ndb.DateTimeProperty(auto_now=True)
-    author = ndb.StructuredProperty(User)
-    post = ndb.StructuredProperty(Article)
 
-class Like(ndb.Model):
-    author = ndb.StructuredProperty(User, required=True)
-    post = ndb.StructuredProperty(Article, required=True)
+
+
+
+class Blog(ndb.Model):
+    name = ndb.StringProperty(required=True)

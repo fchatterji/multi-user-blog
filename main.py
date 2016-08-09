@@ -21,22 +21,22 @@
 #
 import os
 import logging
-import time
 import hmac
 import string
 import hashlib
 import random
 import re
+import json
 
 from google.appengine.ext import ndb
 
 import jinja2
 import webapp2
 
-from models import User, Article, Comment, Like
+from models import User, Article, Comment, Blog
 
 #
-# Constantz
+# Constants
 #
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(
@@ -44,7 +44,11 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
 
+def blog_key():
+    blog_key = Blog.query(Blog.name == "myblog").get().key
+    return blog_key
 
+blog_key = blog_key()
 #
 # Security functions
 #
@@ -74,9 +78,14 @@ def make_pw_hash(name, pw, salt=make_salt()):
 
 
 def check_pw_hash(name, pw, h):
+    logging.info(name)
+    logging.info(pw)
+    logging.info(h)
+
     salt = h.split(',', 1)[1]
 
     if h == make_pw_hash(name, pw, salt=salt):
+        logging.info(make_pw_hash(name, pw, salt=salt))
         return True
     else:
         return False
@@ -86,14 +95,47 @@ def check_pw_hash(name, pw, h):
 # Login
 #
 def login_required(handler_method):
-    """..."""
-    def check_login(self, *args):
+
+    def check_login(self, *args, **kwargs):
         if not self.user:
-            self.redirect("/blog/login")
+            self.redirect_to("login")
             return
         else:
-            handler_method(self, *args)
+            return handler_method(self, *args, **kwargs)
     return check_login
+
+def article_author_required(handler_method):
+
+    def wrapper(self, *args, **kwargs):
+        post_key_url = kwargs['post_key_url']
+        post_key = ndb.Key(urlsafe=post_key_url)
+        post = post_key.get()
+
+        if self.user.name != post.author.name:
+            self.redirect_to('home')
+            return
+
+        else:
+            return handler_method(self, *args, **kwargs)
+
+    return wrapper
+
+def comment_author_required(handler_method):
+
+    def wrapper(self, *args, **kwargs):
+        comment_key_url = kwargs['comment_key_url']
+        comment_key = ndb.Key(urlsafe=comment_key_url)
+        comment = comment_key.get()
+
+        if self.user.name != comment.author.name:
+            self.redirect_to('home')
+            return
+
+        else:
+            return handler_method(self, *args, **kwargs)
+
+    return wrapper
+
 
 
 #
@@ -128,7 +170,7 @@ def validate_signup_form(username, password, verify, email):
     have_error = False
     errors = {}
 
-    user = User.get_user_by_name(username)
+    user = User.query(User.name == username, ancestor=blog_key).get()
 
     if not valid_username(username):
         errors['error_username'] = "That's not a valid username."
@@ -174,7 +216,7 @@ def validate_create_post_form(subject, content):
         return (True, None)
 
 
-def validate_update_post_form(subject, content, original_author, user):
+def validate_update_post_form(subject, content):
     have_error = False
     errors = {}
 
@@ -186,9 +228,6 @@ def validate_update_post_form(subject, content, original_author, user):
         errors['error_content'] = "The content must be at least 3 characters long."
         have_error = True
 
-    if user is not original_author:
-        errors["error_author"] = "You must be the original author of a post to edit it."
-
     if have_error:
         return (False, errors)
     else:
@@ -199,7 +238,9 @@ def validate_login_form(username, password):
     have_error = False
     errors = {}
 
-    user = User.get_user_by_name(username)
+    user = User.query(User.name == username, ancestor=blog_key).get()
+    logging.info(user)
+    logging.info(check_pw_hash(username, password, user.hashed_password))
 
     if not valid_username(username):
         errors['error_username'] = "That's not a valid username."
@@ -213,7 +254,7 @@ def validate_login_form(username, password):
         errors['error_password'] = "That wasn't a valid password."
         have_error = True
 
-    elif user and check_pw_hash(username, password, user.hashed_password):
+    elif not(user and check_pw_hash(username, password, user.hashed_password)):
         errors['error_password'] = "The password is incorrect."
         have_error = True
 
@@ -223,21 +264,9 @@ def validate_login_form(username, password):
         return (True, None)
 
 
-def validate_delete(original_author, user):
-    have_error = False
-    errors = {}
-
-    if user is not original_author:
-        errors["error_author"] = "You must be the original author of a post to delete it."
-
-    if have_error:
-        return (False, errors)
-    else:
-        return (True, None)
-
 
 #
-# Handlers
+# Base handler
 #
 class BaseHandler(webapp2.RequestHandler):
     """Base request handler class with helper functions."""
@@ -265,22 +294,22 @@ class BaseHandler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         user_name = self.read_secure_cookie('user_name')
+        user = User.query(User.name == user_name, ancestor=blog_key).get()
 
-        self.user = user_name and User.get_user_by_name(user_name)
-
-    def check_author(self, post):
-        return self.user == post.author
-
-
-
+        self.user = user
+#
+# Handlers
+#
 class Home(BaseHandler):
     """Handle home page requests."""
 
     def get(self):
-        q = Article.gql("ORDER BY created DESC")
-        posts = q.fetch()
+        posts = Article.query(ancestor=blog_key).fetch()
 
-        self.render('index.html', posts=posts, user=self.user)
+        logging.info(posts)
+
+        self.render('index.html', posts=posts, user=self.user, errors=None)
+
 
 
 class CreatePost(BaseHandler):
@@ -288,7 +317,7 @@ class CreatePost(BaseHandler):
 
     @login_required
     def get(self):
-        self.render("create_post.html", errors=None)
+        self.render("create_post.html", errors=None, user=self.user)
 
     @login_required
     def post(self):
@@ -301,107 +330,180 @@ class CreatePost(BaseHandler):
 
         if is_valid:
 
-            post = Article(subject=subject, content=content, author=author)
-            # save the new post in the datastore and return a key
-            post_key = post.put()
+            post = Article(subject=subject, content=content, author=author, parent=blog_key, comments=[])
+            post.put()
 
             # redirect to the post page
-            post_key = post_key.urlsafe()
-            self.redirect('/blog/post/%s' % post_key)
+            self.redirect_to('home')
 
         else:
-            self.render('create_post.html', subject=subject, content=content, errors=errors)
+            self.render(
+                'create_post.html',
+                subject=subject,
+                content=content,
+                errors=errors,
+                user=self.user
+            )
+
+
+class DetailPost(BaseHandler):
+    """Display the details of a post."""
+
+    @login_required
+    def get(self, post_key_url):
+
+        """
+        # retrieve the post from the key
+        post_key = ndb.Key(urlsafe=post_key_url)
+        post = post_key.get()
+
+        comments = Comment.query(Comment.article == post_key, ancestor=blog_key).fetch()
+
+        self.render(
+            "detail_post.html",
+            post=post,
+            comments=comments,
+            errors=None,
+            user=self.user
+        )"""
 
 
 class UpdatePost(BaseHandler):
     """Handle update post requests."""
 
-    @login_required
-    def get(self, post_key):
-
-        # retrieve the post from the key
-        post_key = ndb.Key(urlsafe=post_key)
-        post = post_key.get()
-
-        subject = post.subject
-        content = post.content
-        author = post.author.name
-
-        self.render("update_post.html", subject=subject, content=content, author=author, errors=None)
-
 
     @login_required
-    def post(self, post_key_url):
+    @article_author_required
+    def get(self, post_key_url):
 
-        # retrieve the post from the key
         post_key = ndb.Key(urlsafe=post_key_url)
         post = post_key.get()
+
+        self.render(
+            "update_post.html",
+            post=post,
+            errors=None,
+            user=self.user
+        )
+
+    @login_required
+    @article_author_required
+    def post(self, post_key_url):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
 
-        author = post.author.name
-        user = self.user
+        is_valid, errors = validate_update_post_form(subject, content)
 
-        is_valid, errors = validate_update_post_form(subject, content, author, user)
+        # retrieve the post from the key
+        post_key = ndb.Key(urlsafe=post_key_url)
+        post = post_key.get()
 
         if is_valid:
 
             post.subject = subject
             post.content = content
             post.put()
-            self.redirect('/blog/post/%s' % post_key_url)
+            self.redirect_to('home')
 
         else:
-            self.render('update_post.html', subject=subject, content=content, author=author, errors=errors)
+            self.render(
+                'update_post.html',
+                post=post,
+                errors=errors,
+                user=self.user
+            )
 
 
-class DetailPost(BaseHandler):
-    """Display the details of a post."""
 
-    def get(self, post_key):
 
-        # retrieve the post from the key
-        post_key = ndb.Key(urlsafe=post_key)
-        post = post_key.get()
-
-        subject = post.subject
-        content = post.content
-        author = post.author.name
-
-        self.render("detail_post.html", subject=subject, content=content, post=post, author=author, errors=None)
 
 
 class DeletePost(BaseHandler):
     """Handle delete post requests."""
 
     @login_required
-    def get(self, post_key):
+    @article_author_required
+    def get(self, post_key_url):
 
-        # retrieve the key from th url string
-        post_key = ndb.Key(urlsafe=post_key)
+        # retrieve the key from the url string
+        post_key = ndb.Key(urlsafe=post_key_url)
+
+        post_key.delete()
+        self.redirect_to('home')
+
+
+
+class CreateComment(BaseHandler):
+
+    @login_required
+    def post(self, post_key_url):
+
+        author = self.user
+        content = self.request.get("content")
+        post_key = ndb.Key(urlsafe=post_key_url)
         post = post_key.get()
+        logging.info(post)
+        logging.info(post.content)
+        logging.info(post.comments)
 
-        subject = post.subject
-        content = post.content
-        author = post.author.name
-        user = self.user
+        comment = Comment(content=content, author=author, parent=blog_key)
+        comment.put()
 
-        is_valid, errors = validate_delete(author, user)
+        post.comments.append(comment)
+        logging.info(post)
+        post.put()
 
-        if is_valid:
-            post_key.delete()
-            time.sleep(0.5)
-            self.redirect('/blog/')
 
-        else:
-            self.render("detail_post.html", subject=subject, content=content, errors=errors)
+        self.redirect_to("home")
+
+
+class UpdateComment(BaseHandler):
+
+    @login_required
+    @comment_author_required
+    def get(self, comment_key_url):
+
+        # retrieve the post from the key
+        comment_key = ndb.Key(urlsafe=comment_key_url)
+        comment = comment_key.get()
+
+        self.render(
+            "update_comment.html",
+            comment=comment,
+            user=self.user
+        )
+
+    @login_required
+    @comment_author_required
+    def post(self, comment_key_url):
+
+        comment_key = ndb.Key(urlsafe=comment_key_url)
+        comment = comment_key.get()
+
+        comment.content = self.request.get('content')
+        comment.put()
+        self.redirect_to('home')
+
+
+
+class DeleteComment(BaseHandler):
+
+    @login_required
+    @comment_author_required
+    def get(self, comment_key_url):
+        comment_key = ndb.Key(urlsafe=comment_key_url)
+
+        comment_key.delete()
+        self.redirect_to('home')
+
 
 
 class Register(BaseHandler):
 
     def get(self):
         self.render("register.html", errors=None)
+
 
     def post(self):
         
@@ -418,15 +520,22 @@ class Register(BaseHandler):
             user = User(
                 name=username,
                 hashed_password=hashed_password,
-                email=email)
-
+                email=email,
+                parent=blog_key
+            )
+            logging.info(user)
             user.put()
             self.set_secure_cookie("user_name", str(user.name))
-            time.sleep(0.5)
-            self.redirect('/blog/')
+            self.redirect_to('home')
 
         else:
-            self.render('register.html', name=username, email=email, errors=errors)
+            self.render(
+                'register.html',
+                name=username,
+                email=email,
+                errors=errors,
+                user=self.user
+            )
 
 
 class Login(BaseHandler):
@@ -442,41 +551,87 @@ class Login(BaseHandler):
         is_valid, errors = validate_login_form(username, password)
 
         if is_valid:
-            user = User.get_user_by_name(username)
+            user = User.query(User.name == username, ancestor=blog_key).get()
             self.set_secure_cookie("user_name", str(user.name))
-            time.sleep(0.5)
-            self.redirect('/blog/')
+
+            self.redirect_to('home')
 
         else:
-            self.render('login.html', name=username, errors=errors)
+            self.render('login.html', name=username, errors=errors, user=self.user)
 
 
 class Logout(BaseHandler):
 
     def get(self):
         self.clear_cookie()
-        self.redirect('/blog/')
+        self.redirect_to('home')
 
 
-class VoteHandler(webapp2.RequestHandler):
+
+
+
+class Like(BaseHandler):
+
+    @login_required
     def post(self):
-        logging.info(self.request.body)
-        data = json.loads(self.request.body)
-        story = ndb.Key(Story, data['storyKey']).get()
-        story.vote_count += 1
-        story.put()
-        self.response.out.write(json.dumps(({'story': story.to_dict()})))
+        post_key_url = self.request.get('post_key_url')
+        post_key = ndb.Key(urlsafe=post_key_url)
+        post = post_key.get()
+
+        logging.info(self.user.key)
+        logging.info(post.liked_by)
+
+        if self.user.key in post.liked_by:
+            post.likes -= 1
+            post.liked_by = [user_key for user_key in post.liked_by if user_key != self.user.key]
+            post.put()
+            is_liked = False
+            self.response.write(json.dumps({'likes': post.likes, 'is_liked': is_liked}))
+
+        else:
+            post.likes += 1
+            post.liked_by.append(self.user.key)
+            post.put()
+            is_liked = True
+            self.response.write(json.dumps({'likes': post.likes, 'is_liked': is_liked}))
 
 
-        
+
+
+class Unlike(BaseHandler):
+
+    @login_required
+    def post(self):
+        post_key_url = self.request.get('post_key_url')
+        post_key = ndb.Key(urlsafe=post_key_url)
+        post = post_key.get()
+
+
+
+        self.response.write(post.likes)
+
+
+
 
 app = webapp2.WSGIApplication([
-    ('/blog/?', Home),
-    ('/blog/register', Register),
-    ('/blog/login', Login),
-    ('/blog/logout', Logout),
-    ('/blog/create', CreatePost),
-    ('/blog/post/(\S+)', DetailPost),
-    ('/blog/update/(\S+)', UpdatePost),
-    ('/blog/delete/(\S+)', DeletePost)],
-    debug=True)
+
+    webapp2.Route(r'/blog/', handler=Home, name='home'),
+
+    webapp2.Route(r'/blog/register', handler=Register, name='register'),
+    webapp2.Route(r'/blog/login', handler=Login, name='login'),
+    webapp2.Route(r'/blog/logout', handler=Logout, name='logout'),
+
+    webapp2.Route(r'/blog/create', handler=CreatePost, name='create_post'),
+    webapp2.Route(r'/blog/update/<post_key_url:\S+>', handler=UpdatePost, name='update_post'),
+    webapp2.Route(r'/blog/delete/<post_key_url:\S+>', handler=DeletePost, name='delete_post'),
+
+    webapp2.Route(r'/blog/comment/create/<post_key_url:\S+>', handler=CreateComment, name='create_comment'),
+    webapp2.Route(r'/blog/comment/update/<comment_key_url:\S+>', handler=UpdateComment, name='update_comment'),
+    webapp2.Route(r'/blog/comment/delete/<comment_key_url:\S+>', handler=DeleteComment, name='delete_comment'),
+
+    webapp2.Route(r'/blog/like', handler=Like, name='like'),
+    webapp2.Route(r'/blog/unlike', handler=Unlike, name='unlike')
+],
+
+    debug=True
+)

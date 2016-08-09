@@ -14,17 +14,13 @@
 
   <div class="form-group">
     <label for="content">Content:</label>
-    <textarea name="content" class="form-control" rows="10" placeholder="Content">{{ content }}</textarea>
+    <textarea id="textarea-tinymce" name="content" class="form-control" rows="10" placeholder="Content">{{ content }}</textarea>
     <p>{{ errors["error_content"] }}</p>
   </div>
 
   <button type="submit" class="btn btn-default">Submit</button>
 
 </form>
-
-
-
-<a href="/blog/">Go back to home page</a>
 
 
 {% endblock %}

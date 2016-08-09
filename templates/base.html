@@ -1,47 +1,78 @@
-<DOCTYPE html>
+<!DOCTYPE html>
 <html>
    <head>
-      <meta name="description" content="Udacity Project 3 multi user blog" />
-      <meta name="author" content="Florent Chatterji">
       <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
       <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+      <meta name="description" content="Udacity Project 3 multi user blog" />
+      <meta name="author" content="Florent Chatterji">
       <meta name="mobile-web-app-capable" content="yes">
       <meta id="theme-color" name="theme-color" content="#307699">
       <!-- If IE use the latest rendering engine -->
-      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
       <title>Udacity Project 3 multi user blog</title>
       <!-- Latest compiled and minified CSS -->
       <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
-      <link rel="stylesheet" href="css/style.css" />
+
+      <link rel="stylesheet" href="/css/base.css">
+
       <script src="//cdn.tinymce.com/4/tinymce.min.js"></script>
-      <script>tinymce.init({ selector:'textarea' });</script>
+
+      
+
+      <script>tinymce.init({ selector:'#textarea-tinymce' });</script>
+
+      <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+
    </head>
 
 <body>
-<ul class="nav nav-pills">
-  <li role="presentation" class="active"><a href="/blog/">Home</a></li>
-  <li role="presentation"><a href="/blog/create">New Post</a></li>
 
-  {% if user %}
-  <li role="presentation">
-    <a href="/blog/logout">Logout</a>
-  </li>
+    <div class="blog-masthead">
+      <div class="container">
+        <nav class="blog-nav">
+          <a class="blog-nav-item active" href="/blog/">Home</a>
+          <a class="blog-nav-item" href="/blog/create">Write a post</a>
 
-      <a class="navbar-brand" href="#">{{ user.name }}</a>
+          {% if user %}
 
-  {% else %}
-  <li role="presentation"><a href="/blog/login">Sign in / Sign up</a></li>
-  {% endif %}
+          <a class="blog-nav-item" href="#">Welcome, {{ user.name }}</a>
+          <a class="blog-nav-item" href="/blog/logout">Logout</a>
 
-</ul>
+          {% else %}
+
+          <a class="blog-nav-item" href="/blog/login">Log in</a>
+          <a class="blog-nav-item" href="/blog/register">Sign up</a>
+
+          {% endif %}
+
+        </nav>
+      </div>
+    </div>
 
 
-    {% block content %}
-
-    {% endblock %}
 
 
-<script   src="https://code.jquery.com/jquery-3.1.0.min.js"   integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s="   crossorigin="anonymous"></script>
+
+
+
+
+
+
+<div class="container">
+        <div class="blog-header">
+        <h1 class="blog-title">The Bootstrap Blog</h1>
+        <p class="lead blog-description">The official example template of creating a blog with Bootstrap.</p>
+      </div>
+
+
+{% block content %}
+
+
+{% endblock %}
+
+</div>
 
 </body>
 </html>

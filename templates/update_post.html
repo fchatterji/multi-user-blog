@@ -8,13 +8,13 @@
 
   <div class="form-group ">
     <label for="subject">Subject:</label>
-    <input type="text" name="subject" value="{{ subject }}" class="form-control" placeholder="Subject">
+    <input type="text" name="subject" value="{{ post.subject }}" class="form-control" placeholder="Subject">
     <p>{{ errors["error_subject"] }}</p>
   </div>
 
   <div class="form-group">
     <label for="content">Content:</label>
-    <textarea name="content" class="form-control" rows="10" placeholder="Content">{{ content }}</textarea>
+    <textarea id="textarea-tinymce" name="content" class="form-control" rows="10" placeholder="Content">{{ post.content }}</textarea>
     <p>{{ errors["error_content"] }}</p>
   </div>
 
@@ -22,11 +22,6 @@
 
 </form>
 
-<p>author: {{ author.name }}</p>
 <p>{{ errors["error_author"] }}</p>
-
-
-<a href="/blog/">Go back to home page</a>
-
 
 {% endblock %}
