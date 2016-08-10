@@ -41,7 +41,13 @@ def blog_key():
     guaranteeing strong consistency. See this article for more detail:
     https://cloud.google.com/datastore/docs/articles/balancing-strong-and-eventual-consistency-with-google-cloud-datastore/
     """
-    blog_key = Blog.query(Blog.name == "myblog").get().key
+    blog = Blog.query(Blog.name == "myblog").get()
+
+    if not blog:
+        blog = Blog(name="myblog")
+
+    blog_key = blog.key
+
     return blog_key
 
 BLOG_KEY = blog_key()
@@ -359,7 +365,7 @@ class Home(BaseHandler):
 
     def get(self):
         """Fetch all posts, render the home page."""
-        posts = Article.query(ancestor=BLOG_KEY).order(-Article.last_modified).fetch()
+        posts = Article.query(ancestor=BLOG_KEY).order(-Article.created).fetch()
 
         self.render('index.html', posts=posts, user=self.user, errors=None)
 

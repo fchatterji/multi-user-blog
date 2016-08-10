@@ -44,7 +44,7 @@
           <hr>
 
           <!-- Date/Time -->
-          <p><span class="glyphicon glyphicon-time"></span> Posted on {{ post.last_modified.strftime('%B %d, %Y') }}</p>
+          <p><span class="glyphicon glyphicon-time"></span> Posted on {{ post.created.strftime('%B %d, %Y') }}</p>
 
           <hr>
 
@@ -76,7 +76,7 @@
               <img class="media-object pull-left" src="/img/user-icon.png" alt="">
               <div class="media-body">
                   <h4 class="media-heading">{{ comment_key.get().author.name }}
-                      <small>{{ comment_key.get().last_modified.strftime('%B %d, %Y') }}</small>
+                      <small>{{ comment_key.get().created.strftime('%B %d, %Y') }}</small>
                   </h4>
                   <p>{{ comment_key.get().content }}</p>
 
