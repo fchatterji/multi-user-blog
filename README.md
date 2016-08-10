@@ -34,5 +34,7 @@ Additionnal libraries and ressources used include:
 
 ## Copyright
 
-This project is part of the udacity full stack web developper nano degree (https://www.udacity.com/course/full-stack-web-developer-nanodegree--nd004). It is not licensed.
+This project is part of the udacity full stack web developper nano degree (https://www.udacity.com/course/full-stack-web-developer-nanodegree--nd004). 
+
+It is not licensed.
 
