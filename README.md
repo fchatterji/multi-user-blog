@@ -32,4 +32,7 @@ Additionnal libraries and ressources used include:
 - bootstrap blog theme: https://startbootstrap.com/template-overviews/blog-post/
 - glyphicons: http://glyphicons.com/
 
+## Copyright
+
+This project is part of the udacity full stack web developper nano degree (https://www.udacity.com/course/full-stack-web-developer-nanodegree--nd004). It is not licensed.
 
