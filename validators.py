@@ -4,9 +4,12 @@
 #
 #
 import re
-from auth.py import check_pw_hash
-from model import User
-from main.py import BLOG_KEY
+from auth import check_pw_hash
+from models import User, Blog
+
+
+# blog key needed to make ancestor queries that have strong consistency
+BLOG_KEY = Blog.blog_key()
 
 
 #
@@ -144,20 +147,23 @@ def validate_login_form(username, password):
 
     user = User.query(User.name == username, ancestor=BLOG_KEY).get()
 
-    if not valid_username(username):
-        errors['error_username'] = "That's not a valid username."
+    if not user:
+        errors['error_username'] = "This username doesn't exist."
         have_error = True
 
-    elif not user:
-        errors['error_username'] = "This username doesn't exist."
+    elif user and not (check_pw_hash(username,
+                                     password,
+                                     user.hashed_password)):
+
+        errors['error_password'] = "The password is incorrect."
+        have_error = True
+
+    elif not valid_username(username):
+        errors['error_username'] = "That's not a valid username."
         have_error = True
 
     if not valid_password(password):
         errors['error_password'] = "That wasn't a valid password."
-        have_error = True
-
-    elif not(user and check_pw_hash(username, password, user.hashed_password)):
-        errors['error_password'] = "The password is incorrect."
         have_error = True
 
     if have_error:

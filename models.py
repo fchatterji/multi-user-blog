@@ -57,3 +57,23 @@ class Blog(ndb.Model):
     """
 
     name = ndb.StringProperty(required=True)
+
+    @classmethod
+    def blog_key(cls):
+        """
+        Return the key of the blog.
+
+        This is used to do ancestor queries throughout the application,
+        therefore guaranteeing strong consistency. See this article for more
+        detail:
+        https://cloud.google.com/datastore/docs/articles/balancing-strong-and-eventual-consistency-with-google-cloud-datastore/
+        """
+        blog = Blog.query(Blog.name == "myblog").get()
+
+        if not blog:
+            blog = Blog(name="myblog")
+            blog.put()
+
+        blog_key = blog.key
+
+        return blog_key

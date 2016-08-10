@@ -33,6 +33,7 @@ app = webapp2.WSGIApplication([
 
     webapp2.Route(r'/', handler=Home, name='home'),
     webapp2.Route(r'/blog', handler=Home, name='home'),
+    webapp2.Route(r'/blog/', handler=Home, name='home'),
 
     webapp2.Route(r'/blog/register', handler=Register, name='register'),
     webapp2.Route(r'/blog/login', handler=Login, name='login'),

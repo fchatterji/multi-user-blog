@@ -42,24 +42,8 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     autoescape=True)
 
 
-def blog_key():
-    """
-    Return the key of the blog.
-
-    This is used to do ancestor queries throughout the application, therefore
-    guaranteeing strong consistency. See this article for more detail:
-    https://cloud.google.com/datastore/docs/articles/balancing-strong-and-eventual-consistency-with-google-cloud-datastore/
-    """
-    blog = Blog.query(Blog.name == "myblog").get()
-
-    if not blog:
-        blog = Blog(name="myblog")
-
-    blog_key = blog.key
-
-    return blog_key
-
-BLOG_KEY = blog_key()
+# blog key needed to make ancestor queries that have strong consistency
+BLOG_KEY = Blog.blog_key()
 
 
 #
