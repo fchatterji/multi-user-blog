@@ -1,91 +1,122 @@
-
-<!--{% extends "base.html" %}-->
+{% extends "base.html" %}
 
 {% block content %}
 
+  {% for post in posts %}
 
-{% for post in posts %}
+    <div class="row">
 
-<div class="row">
-  <div class="col-sm-8 blog-main">
-    <div class="blog-post">
-      <h2 class="blog-post-title">{{ post.subject | safe }}</h2>
-        <p class="blog-post-meta">{{ post.last_modified }} by {{ post.author.name }}</p>
-        <p class="blog-post-meta" id="likes_{{ post.key.urlsafe() }}">{{ post.likes }} likes</p>
+      <!-- Blog Post Content Column -->
+      <div class="col-lg-12">
 
-        <p>{{ post.content | safe }}</p>
+          <!-- Blog Post -->
 
-        <a href="/blog/post/{{ post.key.urlsafe() }}" class="btn btn-primary" role="button">Detail</a> 
+          <!-- Title -->
+          <h1>{{ post.subject | safe }}</h1>
 
-        {% if user and user.name == post.author.name %}
-          
-        <a href="/blog/update/{{ post.key.urlsafe() }}" class="btn btn-primary" role="button">Edit</a> 
-        <a href="/blog/delete/{{ post.key.urlsafe() }}" class="btn btn-default" role="button">Delete</a>
+          <div class="pull-right">
 
-        {% endif %} 
+            <!-- If a user is logged in but he is not the author, add a Like button -->
+            {% if user and user.name != post.author.name %}
+              <button type="button" class="btn btn-lg pull-right" id="like_button_{{ post.key.urlsafe() }}">
+                <span class="glyphicon glyphicon-thumbs-up"></span>
+                <span class="badge" id="likes_{{ post.key.urlsafe() }}"> {{ post.likes }} </span>        
+              </button>
+            {% endif %}
 
-        {% if user and user.name != post.author.name %}
+            <!-- If a user is logged in and he is the author, add Edit and delete buttons -->
+            {% if user and user.name == post.author.name %}
+              <a href="/blog/update/{{ post.key.urlsafe() }}" class="btn btn-primary" role="button">
+                <span class="glyphicon glyphicon-pencil"></span> Edit 
+              </a> 
+              <a href="/blog/delete/{{ post.key.urlsafe() }}" class="btn btn-default" role="button">
+                <span class="glyphicon glyphicon-trash"></span> Delete
+              </a>
+            {% endif %}
 
-        <input type="button" id="like_{{ post.key.urlsafe() }}" class="btn btn-primary" value="like"/>
+          </div>
 
-        {% endif %} 
+          <!-- Author -->
+          <p class="lead">
+              by <a href="#">{{ post.author.name }}</a>
+          </p>
+
+          <hr>
+
+          <!-- Date/Time -->
+          <p><span class="glyphicon glyphicon-time"></span> Posted on {{ post.last_modified.strftime('%B %d, %Y') }}</p>
+
+          <hr>
+
+          <!-- Post Content -->
+          <p class="lead">{{ post.content | safe }}</p>
+
+          <hr>
+
+          <!-- Blog Comments -->
+
+          <!-- Comments Form -->
+          <div class="well">
+              <h4>Leave a Comment:</h4>
+              <form role="form" method="post" id="commentForm" action="/blog/comment/create/{{ post.key.urlsafe() }}">
+                  <div class="form-group">
+                      <textarea class="form-control" id="content" name="content" rows="4" placeholder="Content"></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Submit</button>
+              </form>
+          </div>
+
+          <hr>
+
+          <!-- Posted Comments -->
+          {% for comment_key in post.comments %}
+
+          <!-- Comment -->
+          <div class="media">
+              <img class="media-object pull-left" src="/img/user-icon.png" alt="">
+              <div class="media-body">
+                  <h4 class="media-heading">{{ comment_key.get().author.name }}
+                      <small>{{ comment_key.get().last_modified.strftime('%B %d, %Y') }}</small>
+                  </h4>
+                  <p>{{ comment_key.get().content }}</p>
+
+              </div>
+
+              {% if user and user.name == comment_key.get().author.name %}                    
+              <p>
+                <a href="/blog/comment/update/{{ comment_key.urlsafe() }}" class="btn btn-primary" role="button">
+                  <span class="glyphicon glyphicon-pencil"></span> Edit 
+                </a> 
+                <a href="/blog/comment/delete/{{ comment_key.urlsafe() }}/{{ post.key.urlsafe() }}" class="btn btn-default" role="button">
+                  <span class="glyphicon glyphicon-trash"></span> Delete
+                </a>
+              </p>
+              {% endif %}
+
+          </div>
+
+          {% endfor %}
 
       </div>
+
     </div>
-  </div>
+    <!-- /.row -->
 
 
+  <script>
+  
+      $(document).ready(function() {
 
-<form role="form" method="post" id="commentForm" action="/blog/comment/create/{{ post.key.urlsafe() }}">
+          var post_key_url = '{{ post.key.urlsafe() }}';
 
-  <div class="form-group">
-    <label for="content">Add a comment:</label>
-    <textarea name="content" class="form-control" id="content" rows="4" placeholder="Content">{{ content }}</textarea>
-    <p>{{ errors["error_content"] }}</p>
-  </div>
+          $('#like_button_'.concat(post_key_url)).on('click', { post_key_url: post_key_url}, like);
 
-  <button type="submit" class="btn btn-default">Submit</button>
+      });
 
-</form>
+  </script>
 
+  {% endfor %}
 
-<div id="CommentContainer">
+  <script src="/js/base.js"></script>
 
-{% for comment in post.comments %}
-
-<div class="row">
-  <div class="col-sm-6 col-md-4">
-    <div class="thumbnail">
-      <div class="caption">
-        <h3>Commented by {{ comment.author.name }}</h3>
-        <p>{{ comment.content }}</p>
-        <p>
-          test
-          <a href="/blog/comment/update/{{ comment }}" class="btn btn-primary" role="button">Edit</a> 
-          <a href="/blog/comment/delete/{{ comment }}" class="btn btn-default" role="button">Delete</a>
-        </p>
-      </div>
-    </div>
-  </div>
-</div>
-
-{% endfor %}
-
-
-<script>
-
-$(document).ready(function() {
-
-    var post_key_url = '{{ post.key.urlsafe() }}';
-
-    $('#like_'.concat(post_key_url)).on('click', { post_key_url:post_key_url }, like);
-
-});
-
-</script>
-
-{% endfor %}
-
-
-<script src="/js/base.js"></script>
 {% endblock %}
