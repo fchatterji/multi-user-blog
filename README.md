@@ -12,7 +12,7 @@ Multi User Blog is a web application, which allows users to do mainly the follow
 
 To see the website in your browser
 
-Go to https://round-centaur-138323.appspot.com/blog/
+Go to https://multi-user-blog-145719.appspot.com/
 
 To deploy it locally
 
